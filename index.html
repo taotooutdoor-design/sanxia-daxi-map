@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="description" content="三峽·大溪地方創生資源地圖 v3：資本視角、缺口分析、敘事路線、CSV/GeoJSON、參與補點。專家共創全面優化版。">
+<title>三峽·大溪 地方創生資源地圖 v3｜全面優化</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<style>
+:root{--paper:#f7f1e3;--ink:#2c2416;--accent:#8b4513;--a2:#c45c26;--line:#d4c4a8;--shadow:rgba(44,36,22,.16);--side:min(400px,94vw)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;background:var(--paper);color:var(--ink);overflow:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.skip{position:absolute;left:-999px;top:0;background:#000;color:#fff;padding:8px;z-index:10000}
+.skip:focus{left:8px;top:8px}
+#app{display:grid;grid-template-columns:var(--side) 1fr;height:100vh;height:100dvh}
+.sidebar{background:linear-gradient(165deg,#faf6ee,#f0e6d4);border-right:3px solid var(--line);display:flex;flex-direction:column;z-index:1000;box-shadow:4px 0 24px var(--shadow);overflow:hidden}
+.brand{padding:14px 14px 10px;border-bottom:2px dashed var(--line)}
+.brand .ey{font-size:10px;letter-spacing:.14em;color:var(--a2);font-weight:700}
+.brand h1{font-size:1.1rem;line-height:1.35;margin:4px 0}
+.brand p{font-size:11.5px;color:#5c5346;line-height:1.5}
+.badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.badge{font-size:10px;padding:3px 8px;border-radius:999px;background:#fff8ee;border:1px solid var(--line)}
+.tabs{display:flex;gap:3px;padding:8px;border-bottom:1px solid var(--line);overflow-x:auto;background:rgba(255,255,255,.35)}
+.tab{flex:0 0 auto;border:0;background:0;padding:7px 10px;border-radius:999px;font-size:11.5px;cursor:pointer;color:#5c5346;font-family:inherit}
+.tab.active{background:var(--ink);color:#f7f1e3}
+.panel{display:none;flex:1;overflow:auto;padding:10px 12px 28px}
+.panel.active{display:block}
+.search{position:relative;margin-bottom:8px}
+.search input{width:100%;padding:9px 10px 9px 32px;border:1.5px solid var(--line);border-radius:11px;background:#fffdf8;font:14px inherit}
+.search i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#8a7d6b;font-size:12px}
+.filters{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.chip{border:1.5px solid var(--line);background:#fffdf8;border-radius:999px;padding:5px 9px;font-size:11px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px}
+.chip.on{border-color:var(--ink);background:var(--ink);color:#f7f1e3}
+.chip .dot{width:7px;height:7px;border-radius:50%}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px}
+.stat{background:#fffdf8;border:1px solid var(--line);border-radius:10px;padding:8px}
+.stat b{display:block;font-size:1.1rem;color:var(--a2)}
+.stat span{font-size:10px;color:#6b6255}
+.cap-grid,.list{display:grid;gap:7px}
+.cap-card,.card,.itin,.expert{background:#fffdf8;border:1.5px solid var(--line);border-radius:12px;padding:10px;cursor:pointer}
+.cap-card:hover,.card:hover,.cap-card.on{box-shadow:0 4px 14px var(--shadow);border-color:var(--accent)}
+.cap-card .top{display:flex;align-items:center;gap:7px;font-weight:700;font-size:12.5px}
+.cap-card .top i{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:11px}
+.cap-card p{font-size:10.5px;color:#6b6255;margin-top:3px}
+.cap-card .cnt{margin-left:auto;font-size:11px;color:var(--a2)}
+.card h3{font-size:13.5px}
+.card .meta{font-size:10.5px;color:#6b6255;display:flex;flex-wrap:wrap;gap:4px;margin:3px 0}
+.card .meta span{background:#f3ebe0;padding:2px 5px;border-radius:5px}
+.card p{font-size:11.5px;line-height:1.4;color:#4a4338;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.itin h3{font-size:13.5px}.itin .tag{font-size:10px;color:var(--a2);font-weight:700}
+.itin p{font-size:11.5px;color:#5c5346;margin:5px 0;line-height:1.4}
+.itin button,.tools button,.suggest-submit{width:100%;border:0;background:var(--ink);color:#f7f1e3;padding:9px;border-radius:10px;cursor:pointer;font:13px inherit}
+.itin button:hover{background:var(--a2)}
+.expert{display:flex;gap:8px;cursor:default}
+.expert i{width:34px;height:34px;border-radius:9px;background:var(--ink);color:#f7f1e3;display:grid;place-items:center;flex:0 0 auto}
+.expert b{font-size:12.5px;display:block}.expert span{font-size:10.5px;color:#6b6255;line-height:1.35}
+.tools{display:grid;gap:7px}
+.tools button{text-align:left;background:#fffdf8;color:var(--ink);border:1.5px solid var(--line);display:flex;align-items:center;gap:8px}
+.tools button:hover{border-color:var(--accent)}
+textarea.suggest{width:100%;min-height:70px;border:1.5px solid var(--line);border-radius:11px;padding:8px;font:12.5px inherit;background:#fffdf8;margin:6px 0}
+.suggest-submit{background:var(--a2)}
+.map-wrap{position:relative;height:100%}
+#map{height:100%;width:100%;background:#d9cfc0}
+.mc{position:absolute;z-index:500;display:flex;gap:6px;flex-wrap:wrap}
+.mc.tl{top:10px;left:10px}.mc.tr{top:10px;right:10px}.mc.bl{bottom:16px;left:10px;max-width:min(440px,calc(100% - 20px))}
+.bm{border:1.5px solid var(--line);background:#fffdf8ee;backdrop-filter:blur(6px);border-radius:11px;padding:7px 10px;font-size:11.5px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px var(--shadow);display:inline-flex;align-items:center;gap:5px}
+.bm.active{background:var(--ink);color:#f7f1e3;border-color:var(--ink)}
+.legend{background:#fffdf8ee;border:1.5px solid var(--line);border-radius:12px;padding:8px 10px;font-size:10.5px;box-shadow:0 4px 12px var(--shadow);max-height:40vh;overflow:auto}
+.legend h4{font-size:11.5px;margin-bottom:4px}
+.legend-row{display:flex;align-items:center;gap:5px;margin:2px 0}
+.legend-row i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.mobile-bar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:1100;background:#fffdf8;border-top:2px solid var(--line);padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:6px}
+.mobile-bar button{flex:1;border:0;background:var(--ink);color:#f7f1e3;padding:10px;border-radius:11px;font:12.5px inherit}
+.mobile-bar button.ghost{background:#efe6d4;color:var(--ink)}
+.leaflet-popup-content-wrapper{border-radius:13px;border:2px solid var(--line);background:#fffdf8}
+.leaflet-popup-content{margin:11px 12px;font-size:12.5px;min-width:210px}
+.popup h3{font-size:14.5px}.popup .tags{display:flex;flex-wrap:wrap;gap:3px;margin:5px 0}
+.popup .tags span{font-size:10px;background:#f3ebe0;padding:2px 5px;border-radius:5px}
+.popup p{font-size:12px;line-height:1.45;margin:5px 0;color:#4a4338}
+.popup .tip{font-size:11px;color:#2a6f6f;background:rgba(42,111,111,.08);padding:5px 7px;border-radius:7px}
+.popup .kv{font-size:11px;color:#6b6255;margin-top:4px}
+.popup a{font-size:12px;font-weight:700;color:var(--accent)}
+.pin{width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.25);display:grid;place-items:center}
+.pin i{transform:rotate(45deg);color:#fff;font-size:12px}
+.pin.gap{animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(230,57,70,.5)}70%{box-shadow:0 0 0 10px rgba(230,57,70,0)}}
+.marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:var(--accent)!important;color:#fff!important}
+.tour{position:fixed;inset:0;background:rgba(44,36,22,.55);z-index:2000;display:none;align-items:center;justify-content:center;padding:14px}
+.tour.show{display:flex}
+.modal{background:#fffdf8;border:2px solid var(--line);border-radius:16px;max-width:560px;width:100%;max-height:85vh;overflow:auto;padding:18px}
+.modal h2{font-size:1.15rem;margin-bottom:8px}.modal p{font-size:12.5px;line-height:1.55;margin-bottom:8px;color:#4a4338}
+.modal .close{float:right;border:0;background:#efe6d4;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px}
+.gap-banner{background:#fff0f0;border:1px solid #e63946;border-radius:10px;padding:8px;font-size:11.5px;margin-bottom:8px;line-height:1.4}
+@media (max-width:860px){
+#app{grid-template-columns:1fr}
+.sidebar{position:fixed;inset:auto 0 0 0;height:min(64vh,540px);border-right:0;border-top:3px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(calc(100% - 54px));transition:transform .28s}
+.sidebar.open{transform:translateY(0)}
+.mobile-bar{display:flex}.mc.bl{bottom:60px}
+}
+@media print{
+body{overflow:auto}.sidebar,.mobile-bar,.mc,.leaflet-control-container{display:none!important}
+#app{display:block}#map{height:70vh!important}.print-only{display:block}
+}
+.print-only{display:none}
+</style>
+</head>
+<body>
+<a class="skip" href="#list-panel">跳到資源列表</a>
+<div id="app">
+<aside class="sidebar" id="sidebar">
+<div class="brand">
+<div class="ey">LOCAL REVITALIZATION MAP v3</div>
+<h1>三峽·大溪<br>地方創生資源地圖</h1>
+<p>全面優化版：資本視角 · 缺口分析 · 敘事路線 · 開放資料 · 參與補點。資料需在地工作坊校正。</p>
+<div class="badges">
+<span class="badge">v3 全面優化</span>
+<span class="badge">52+ 節點</span>
+<span class="badge">缺口圖層</span>
+<span class="badge">CSV / GeoJSON</span>
+</div>
+</div>
+<div class="tabs" role="tablist">
+<button class="tab active" data-tab="list">資源</button>
+<button class="tab" data-tab="capital">資本</button>
+<button class="tab" data-tab="gap">缺口</button>
+<button class="tab" data-tab="route">路線</button>
+<button class="tab" data-tab="experts">專家</button>
+<button class="tab" data-tab="tools">工具</button>
+</div>
+<div class="panel active" id="panel-list">
+<div class="search"><i class="fa-solid fa-magnifying-glass"></i>
+<input id="q" type="search" placeholder="搜尋名稱、地址、標籤、營運者…" aria-label="搜尋"/></div>
+<div class="filters" id="area-filters"></div>
+<div class="filters" id="cat-filters"></div>
+<div class="filters" id="status-filters"></div>
+<div class="stats">
+<div class="stat"><b id="stat-n">0</b><span>可見點</span></div>
+<div class="stat"><b id="stat-g">0</b><span>缺口／機會</span></div>
+<div class="stat"><b id="stat-a">0</b><span>行政區</span></div>
+</div>
+<div class="list" id="list-panel"></div>
+</div>
+<div class="panel" id="panel-capital">
+<p style="font-size:11.5px;color:#5c5346;margin-bottom:8px;line-height:1.45">資產本位（ABCD）資本視角：點擊卡片可篩選地圖。</p>
+<div class="cap-grid" id="cap-grid"></div>
+</div>
+<div class="panel" id="panel-gap">
+<div class="gap-banner"><b>創生缺口／機會圖層</b><br>紅色標記為專家初判待共識項目，非定論。請搭配在地工作坊確認。</div>
+<div class="filters" id="gap-toggle"></div>
+<div class="list" id="gap-list"></div>
+</div>
+<div class="panel" id="panel-route">
+<p style="font-size:11.5px;color:#5c5346;margin-bottom:8px">敘事路線：點擊後地圖連線並聚焦。</p>
+<div id="itin-list"></div>
+</div>
+<div class="panel" id="panel-experts">
+<p style="font-size:11.5px;color:#5c5346;margin-bottom:8px;line-height:1.45">依 C-CAP 與參與式資源盤點原則共創。詳見 METHOD 文件。</p>
+<div id="expert-list"></div>
+</div>
+<div class="panel" id="panel-tools">
+<div class="tools">
+<button type="button" id="btn-export-gj"><i class="fa-solid fa-file-code"></i> 匯出可見點 GeoJSON</button>
+<button type="button" id="btn-export-csv"><i class="fa-solid fa-file-csv"></i> 匯出可見點 CSV</button>
+<button type="button" id="btn-fit"><i class="fa-solid fa-expand"></i> 縮放至全部可見</button>
+<button type="button" id="btn-clear-route"><i class="fa-solid fa-eraser"></i> 清除路線</button>
+<button type="button" id="btn-print"><i class="fa-solid fa-print"></i> 列印地圖視圖</button>
+<button type="button" id="btn-method"><i class="fa-solid fa-circle-info"></i> 方法論說明</button>
+</div>
+<h3 style="font-size:13px;margin:14px 0 6px">參與式補點</h3>
+<p style="font-size:11px;color:#6b6255">建議新增資源，存於本機瀏覽器供工作坊使用。</p>
+<textarea class="suggest" id="suggest-text" placeholder="名稱／大概位置／為何重要／聯絡方式…"></textarea>
+<button class="suggest-submit" type="button" id="btn-suggest">送出建議</button>
+<div id="suggest-list" style="margin-top:8px;font-size:12px"></div>
+</div>
+</aside>
+<div class="map-wrap">
+<div id="map" role="application" aria-label="資源地圖"></div>
+<div class="mc tl">
+<button class="bm active" id="basemap-sat" type="button"><i class="fa-solid fa-satellite"></i> 衛星</button>
+<button class="bm" id="basemap-osm" type="button"><i class="fa-solid fa-map"></i> 街道</button>
+<button class="bm" id="basemap-topo" type="button"><i class="fa-solid fa-mountain"></i> 地形</button>
+</div>
+<div class="mc tr">
+<button class="bm" id="btn-tour" type="button"><i class="fa-solid fa-lightbulb"></i> 關於 v3</button>
+</div>
+<div class="mc bl"><div class="legend" id="legend"></div></div>
+</div>
+</div>
+<div class="mobile-bar">
+<button type="button" class="ghost" id="btn-toggle-side">面板</button>
+<button type="button" id="btn-mobile-fit">全部</button>
+</div>
+<div class="tour" id="modal" role="dialog" aria-modal="true">
+<div class="modal">
+<button class="close" id="modal-close" aria-label="關閉">×</button>
+<h2>地方創生資源地圖 v3</h2>
+<p><b>出發點：</b>地圖是創生的共同資產清單與討論桌，不是旅遊摺頁。</p>
+<p><b>本版執行：</b>資本分類、缺口／機會圖層、營運欄位（時間／電話／預約／無障礙／營運者）、5 條敘事路線、三底圖、群集、CSV+GeoJSON 匯出、補點、列印、方法論。</p>
+<p><b>聲明：</b>公開資料彙整與合理估計，實地校正前勿作唯一決策依據。</p>
+<p><b>下一步：</b>工作坊校正 → 補聯絡與無障礙 → 對接開放資料 → 固定網域託管。</p>
+</div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+const CATEGORIES = {"industry": {"name": "特色產業", "icon": "fa-industry", "color": "#c45c26"}, "culture": {"name": "文化歷史", "icon": "fa-landmark", "color": "#8b4513"}, "nature": {"name": "自然生態", "icon": "fa-leaf", "color": "#2d6a4f"}, "trail": {"name": "登山健行", "icon": "fa-person-hiking", "color": "#40916c"}, "leisure": {"name": "休閒露營", "icon": "fa-campground", "color": "#d4a017"}, "park": {"name": "公園綠地", "icon": "fa-tree", "color": "#52b788"}, "medical": {"name": "醫療健康", "icon": "fa-hospital", "color": "#9b2226"}, "education": {"name": "教育資源", "icon": "fa-graduation-cap", "color": "#1d4e89"}, "community": {"name": "社區組織", "icon": "fa-people-group", "color": "#5c4d7a"}, "public": {"name": "公共服務", "icon": "fa-building-columns", "color": "#495057"}, "gap": {"name": "創生缺口", "icon": "fa-triangle-exclamation", "color": "#e63946"}};
+const CAPITALS = {"natural": {"name": "自然資本", "icon": "fa-leaf", "color": "#2d6a4f", "tip": "山、水、生態、開放空間"}, "cultural": {"name": "文化資本", "icon": "fa-landmark", "color": "#8b4513", "tip": "文史、工藝、節慶、敘事"}, "economic": {"name": "經濟資本", "icon": "fa-store", "color": "#c45c26", "tip": "產業、品牌、市集、就業"}, "social": {"name": "社會資本", "icon": "fa-people-group", "color": "#5c4d7a", "tip": "社群、據點、協力網絡"}, "human": {"name": "人力資本", "icon": "fa-graduation-cap", "color": "#1d4e89", "tip": "學習、培力、知識"}, "service": {"name": "服務資本", "icon": "fa-hand-holding-heart", "color": "#9b2226", "tip": "公共服務、醫療、行政"}, "built": {"name": "建成資本", "icon": "fa-building", "color": "#d4a017", "tip": "設施、場域、基礎設施"}};
+const PLACES = [{"id": 1, "name": "三峽老街（民權街）", "area": "三峽", "cat": "culture", "capital": "cultural", "lat": 24.93087, "lng": 121.36822, "desc": "全台保存完整的巴洛克式紅磚拱廊老街之一，約260公尺；昔日藍染、茶葉與樟腦集散地，是三峽文化核心。", "addr": "新北市三峽區民權街37–147號", "hours": "街區全天可逛；店家多為10:00–18:00", "phone": "", "web": "https://www.sanxias.com.tw/", "access": "部分騎樓可通行，石板路注意防滑", "operator": "商圈店家／公所協管", "season": ["全年"], "tip": "平日較好拍；支持在地店家與工藝。", "status": "公開", "booking": "否", "tags": ["老街", "巴洛克", "藍染史"], "related": [2, 3, 5, 11]}, {"id": 2, "name": "三峽歷史文物館", "area": "三峽", "cat": "culture", "capital": "cultural", "lat": 24.9343, "lng": 121.369, "desc": "日治時期舊鎮公所紅磚建築，展示三峽開發史、藍染器具與老照片，認識三角湧的最佳起點。", "addr": "新北市三峽區中山路1號", "hours": "請依館方公告", "phone": "", "web": "", "access": "館舍入口階梯，可先電洽無障礙", "operator": "公部門／委外", "season": ["全年"], "tip": "可與染工坊、老街步行串聯。", "status": "公開", "booking": "團體建議預約", "tags": ["文史", "建築"], "related": [1, 3]}, {"id": 3, "name": "三峽染工坊暨藍染中心", "area": "三峽", "cat": "industry", "capital": "economic", "lat": 24.9345, "lng": 121.3685, "desc": "三角湧文化協進會推動藍染復振據點，提供DIY體驗、商品與文化導覽，延續清代染布產業記憶。", "addr": "新北市三峽區中山路20巷3號（歷史文物館旁）", "hours": "約10:00–17:00（週一公休；體驗多至16:00）", "phone": "(02)8671-3108", "web": "http://www.sanchiaoyung.org.tw", "access": "巷弄內，步行友善", "operator": "三角湧文化協進會", "season": ["全年"], "tip": "DIY建議事先預約；體驗約1–2小時。", "status": "公開", "booking": "建議預約", "tags": ["藍染", "DIY", "創生"], "related": [1, 4, 11]}, {"id": 4, "name": "藍染公園／藍染遊客服務中心", "area": "三峽", "cat": "culture", "capital": "cultural", "lat": 24.932, "lng": 121.3695, "desc": "老街旁藍染意象公園與服務中心，整合展示、商品、志工諮詢與社區藍染培力。", "addr": "新北市三峽區仁愛街47號附近", "hours": "公園全天；服務中心約平日10–17、假日10–18（週二常公休，以現場為準）", "phone": "", "web": "", "access": "戶外平緩", "operator": "活力三峽志工／地方團隊", "season": ["全年"], "tip": "可洽藍染導覽與小農商品。", "status": "公開", "booking": "課程需預約", "tags": ["藍染", "公園", "服務中心"], "related": [1, 3]}, {"id": 5, "name": "清水祖師廟", "area": "三峽", "cat": "culture", "capital": "cultural", "lat": 24.9341, "lng": 121.3705, "desc": "三峽信仰與石雕藝術重鎮，李梅樹等匠師參與修繕，廟貌本身即為大型藝術空間。", "addr": "新北市三峽區秀川里秀川街1號", "hours": "約05:00–21:00", "phone": "(02)2671-1330", "web": "", "access": "廣場可達，殿內階梯", "operator": "廟方", "season": ["全年"], "tip": "尊重禮俗；適合與老街步行串連。", "status": "公開", "booking": "否", "tags": ["信仰", "石雕", "藝術"], "related": [1, 2]}, {"id": 6, "name": "李梅樹紀念美術館", "area": "三峽", "cat": "culture", "capital": "cultural", "lat": 24.9302, "lng": 121.3758, "desc": "展示李梅樹畫作與三峽地方藝術脈絡，連結祖師廟修繕與在地美學。", "addr": "新北市三峽區中華路43巷10號", "hours": "依館方公告", "phone": "", "web": "", "access": "請依館方無障礙說明", "operator": "基金會／館方", "season": ["全年"], "tip": "可安排藝術半日遊。", "status": "公開", "booking": "團體預約", "tags": ["美術", "地方學"], "related": [5]}, {"id": 7, "name": "甘樂文創", "area": "三峽", "cat": "community", "capital": "social", "lat": 24.9295, "lng": 121.371, "desc": "老厝再生的在地文創與展演空間，結合在地物產、活動與青年行動，是創生網絡常見節點。", "addr": "新北市三峽區", "hours": "依店家／活動公告", "phone": "", "web": "", "access": "老屋空間", "operator": "甘樂文創團隊", "season": ["全年"], "tip": "關注活動檔期與在地物產。", "status": "公開", "booking": "活動報名", "tags": ["文創", "青年", "展演"], "related": [1, 11]}, {"id": 8, "name": "鳶山登山步道", "area": "三峽", "cat": "trail", "capital": "natural", "lat": 24.9388, "lng": 121.3535, "desc": "三峽代表性輕中級登山路線，視野可及大漢溪流域，自然資本與地方認同重要節點。", "addr": "新北市三峽區鳶山里", "hours": "日間建議", "phone": "", "web": "", "access": "步道落差，長輩與幼童需評估", "operator": "公所／林管相關", "season": ["春", "秋", "冬"], "tip": "備水、防滑；勿偏離步道。", "status": "公開", "booking": "否", "tags": ["登山", "視野"], "related": [9, 15]}, {"id": 9, "name": "滿月圓國家森林遊樂區", "area": "三峽", "cat": "nature", "capital": "natural", "lat": 24.8325, "lng": 121.445, "desc": "北台灣熱門森林遊樂區，瀑布、步道與生態解說，連結三峽山區自然資本。", "addr": "新北市三峽區中正路二段滿月圓", "hours": "依林務單位公告（常有入園管制）", "phone": "", "web": "", "access": "部分無障礙步道，其餘山徑", "operator": "林業及自然保育署", "season": ["春", "夏", "秋"], "tip": "假日人潮多；查入園規定。", "status": "公開", "booking": "繁忙日可能需預約", "tags": ["森林", "瀑布", "親子"], "related": [8, 10]}, {"id": 10, "name": "熊空茶園／熊空溪", "area": "三峽", "cat": "nature", "capital": "natural", "lat": 24.855, "lng": 121.42, "desc": "山區茶園與溪谷景觀，兼具自然資本與茶產業經濟潛力。", "addr": "新北市三峽區熊空", "hours": "戶外全天；店家另計", "phone": "", "web": "", "access": "山路彎曲，大眾運輸有限", "operator": "茶園／地方業者", "season": ["全年"], "tip": "自駕或接駁；尊重產地。", "status": "公開", "booking": "體驗課預約", "tags": ["茶", "溪谷"], "related": [9]}, {"id": 11, "name": "三角湧文化協進會", "area": "三峽", "cat": "community", "capital": "social", "lat": 24.9315, "lng": 121.3688, "desc": "推動藍染保存、社區導覽與文化復振的關鍵社群組織，是三峽創生社會資本核心。", "addr": "新北市三峽區民權街84巷2號", "hours": "依協會活動", "phone": "(02)2671-8058", "web": "http://www.sanchiaoyung.org.tw", "access": "巷弄", "operator": "三角湧文化協進會", "season": ["全年"], "tip": "適合洽詢導覽與合作。", "status": "盤點中", "booking": "預約參訪", "tags": ["社群", "藍染", "導覽"], "related": [3, 4, 1]}, {"id": 12, "name": "國立臺北大學（三峽校區）", "area": "三峽", "cat": "education", "capital": "human", "lat": 24.9456, "lng": 121.3715, "desc": "區域高等教育與青年人力資本節點，可鏈結地方實習、研究與創生合作。", "addr": "新北市三峽區大學路151號", "hours": "校園依校方規定", "phone": "", "web": "https://www.ntpu.edu.tw/", "access": "校園無障礙逐步完善", "operator": "國立臺北大學", "season": ["全年"], "tip": "創生可洽USR／相關中心。", "status": "公開", "booking": "活動報名", "tags": ["大學", "培力", "USR"], "related": [7, 11]}, {"id": 13, "name": "三峽農會／在地農產通路", "area": "三峽", "cat": "industry", "capital": "economic", "lat": 24.9348, "lng": 121.368, "desc": "在地農產與食農教育潛在節點，連結產銷與地方品牌。", "addr": "新北市三峽區", "hours": "營業時間依門市", "phone": "", "web": "", "access": "市區可達", "operator": "農會／產銷班", "season": ["全年"], "tip": "可查當季農產與市集。", "status": "盤點中", "booking": "否", "tags": ["農產", "食農"], "related": [10, 7]}, {"id": 14, "name": "恩主公醫院（三峽）", "area": "三峽", "cat": "medical", "capital": "service", "lat": 24.938, "lng": 121.377, "desc": "區域重要醫療服務資本，非觀光點，供緊急與在地健康支持。", "addr": "新北市三峽區復興路399號", "hours": "急診24小時", "phone": "(02)2676-5566", "web": "", "access": "醫院無障礙動線", "operator": "醫療法人", "season": ["全年"], "tip": "緊急醫療用；非旅遊景點。", "status": "公開", "booking": "門診掛號", "tags": ["醫療", "急診"], "related": []}, {"id": 15, "name": "三峽河／大豹溪水域環境", "area": "三峽", "cat": "nature", "capital": "natural", "lat": 24.928, "lng": 121.365, "desc": "形塑三角湧聚落與染布漂洗史的水文地景；親水需注意安全與保育。", "addr": "新北市三峽區溪岸周邊", "hours": "日間", "phone": "", "web": "", "access": "河岸步道部分路段", "operator": "公所／水利相關", "season": ["春", "秋"], "tip": "雨後慎入溪；勿破壞生態。", "status": "公開", "booking": "否", "tags": ["水文", "地景"], "related": [1, 8]}, {"id": 16, "name": "三峽公有零售市場", "area": "三峽", "cat": "industry", "capital": "economic", "lat": 24.9335, "lng": 121.3708, "desc": "日常民生物資與在地消費節點，體現建成與經濟資本的生活底蘊。", "addr": "新北市三峽區", "hours": "清晨至午後為主", "phone": "", "web": "", "access": "傳統市場動線較密", "operator": "攤商／市場管理", "season": ["全年"], "tip": "體驗在地生活消費。", "status": "公開", "booking": "否", "tags": ["市場", "生活"], "related": [13]}, {"id": 17, "name": "三峽區公所", "area": "三峽", "cat": "public", "capital": "service", "lat": 24.9346, "lng": 121.3692, "desc": "地方行政與創生政策窗口，公共服務資本。", "addr": "新北市三峽區中山路16號", "hours": "平日上班時間", "phone": "(02)2671-1011", "web": "https://www.sanxia.ntpc.gov.tw/", "access": "公部門無障礙", "operator": "三峽區公所", "season": ["全年"], "tip": "洽詢地方計畫與活動許可。", "status": "公開", "booking": "否", "tags": ["行政", "政策"], "related": [18]}, {"id": 18, "name": "三峽社區發展／里辦公室網絡", "area": "三峽", "cat": "community", "capital": "social", "lat": 24.9325, "lng": 121.372, "desc": "里與社區發展協會構成基層社會資本，是參與式盤點的關鍵協力對象。", "addr": "新北市三峽區各里", "hours": "依各會", "phone": "", "web": "", "access": "社區據點", "operator": "社區發展協會", "season": ["全年"], "tip": "工作坊應邀請里長與協會。", "status": "盤點中", "booking": "預約", "tags": ["社區", "參與"], "related": [11, 17]}, {"id": 19, "name": "三峽露營／山區休憩場域（示意）", "area": "三峽", "cat": "leisure", "capital": "built", "lat": 24.86, "lng": 121.4, "desc": "山區露營與休閒場域群集區，建成資本與觀光經濟交界；實際場址請查合法業者。", "addr": "新北市三峽山區", "hours": "依業者", "phone": "", "web": "", "access": "山路", "operator": "合法露營業者", "season": ["春", "秋"], "tip": "確認合法場地與防火規範。", "status": "盤點中", "booking": "需預約", "tags": ["露營", "休閒"], "related": [9, 10]}, {"id": 20, "name": "三峽國小周邊公共開放空間", "area": "三峽", "cat": "park", "capital": "built", "lat": 24.933, "lng": 121.3712, "desc": "老街周邊重要公共空間與活動節點，支撐節慶與日常停留。", "addr": "新北市三峽區", "hours": "開放空間為主", "phone": "", "web": "", "access": "平地", "operator": "學校／公所", "season": ["全年"], "tip": "大型活動動線節點。", "status": "公開", "booking": "活動申請", "tags": ["開放空間", "活動"], "related": [1, 4]}, {"id": 21, "name": "大溪老街（和平路／中山路一帶）", "area": "大溪", "cat": "culture", "capital": "cultural", "lat": 24.8835, "lng": 121.2875, "desc": "大溪歷史街區與豆干、木器印象的核心，文化與經濟資本交織。", "addr": "桃園市大溪區和平路一帶", "hours": "街區全天；店家多10:00–18:00", "phone": "", "web": "", "access": "騎樓與街道可達", "operator": "商圈／公所", "season": ["全年"], "tip": "可接木博館街角館路線。", "status": "公開", "booking": "否", "tags": ["老街", "豆干", "木器"], "related": [22, 23, 24]}, {"id": 22, "name": "大溪木藝生態博物館（壹號館等）", "area": "大溪", "cat": "culture", "capital": "cultural", "lat": 24.881, "lng": 121.2868, "desc": "以生態博物館理念串連公有館舍與街角館，保存木藝產業與常民生活，地方創生標竿案例。", "addr": "桃園市大溪區中正路68號（壹號館）", "hours": "多館約09:30–17:00，週一休（各館略有不同）", "phone": "(03)388-8600", "web": "https://wem.tycg.gov.tw/", "access": "館舍多有階梯，詳官網", "operator": "桃園市立大溪木藝生態博物館", "season": ["全年"], "tip": "假日有老城導覽；可走街角館。", "status": "公開", "booking": "導覽依公告", "tags": ["生態博物館", "木藝", "創生"], "related": [23, 24, 25, 30]}, {"id": 23, "name": "木生活館（原蔣公行館）", "area": "大溪", "cat": "culture", "capital": "cultural", "lat": 24.8805, "lng": 121.2855, "desc": "木藝體驗與展示空間，扣合大溪木藝生活美學。", "addr": "桃園市大溪區普濟路21-3號", "hours": "約10:00–18:00，週一週二休（以官網為準）", "phone": "(03)387-0989", "web": "https://wem.tycg.gov.tw/", "access": "歷史建築", "operator": "木博館", "season": ["全年"], "tip": "可安排木作體驗。", "status": "公開", "booking": "體驗預約", "tags": ["木藝", "體驗"], "related": [22, 24]}, {"id": 24, "name": "工藝交流館／工藝基地", "area": "大溪", "cat": "industry", "capital": "economic", "lat": 24.8818, "lng": 121.2862, "desc": "日式宿舍群再利用為工藝師駐村、教室與交流空間，支撐產業培力與經濟資本。", "addr": "桃園市大溪區普濟路13巷", "hours": "約11:00–17:00，週二至週日", "phone": "(03)388-8600", "web": "https://wem.tycg.gov.tw/", "access": "宿舍群步道", "operator": "木博館／駐村工藝師", "season": ["全年"], "tip": "適合觀察職人與課程。", "status": "公開", "booking": "課程預約", "tags": ["工藝", "培力", "駐村"], "related": [22, 25]}, {"id": 25, "name": "大溪街角館網絡", "area": "大溪", "cat": "community", "capital": "social", "lat": 24.8828, "lng": 121.2878, "desc": "民間夥伴空間與「領路人」，由在地人說故事；河東／河西分區，是社會資本與參與式創生核心。", "addr": "大溪老城與周邊街角", "hours": "各館不同，多需預約", "phone": "", "web": "https://wem.tycg.gov.tw/", "access": "巷弄老屋", "operator": "街角館經營者／領路人", "season": ["全年"], "tip": "官網查地圖與預約。", "status": "公開", "booking": "多需預約", "tags": ["街角館", "共學", "在地知識"], "related": [22, 26, 27]}, {"id": 26, "name": "新玉清木器行（街角館代表）", "area": "大溪", "cat": "industry", "capital": "economic", "lat": 24.8832, "lng": 121.2882, "desc": "榫接與神桌等傳統木器展示與導覽，木藝產業活態資產。", "addr": "桃園市大溪區和平路一帶", "hours": "依店家", "phone": "", "web": "", "access": "店面", "operator": "新玉清木器", "season": ["全年"], "tip": "可配合街角館導覽。", "status": "公開", "booking": "導覽預約", "tags": ["木器", "職人"], "related": [25, 27]}, {"id": 27, "name": "三和木藝工作坊／羨木工坊等", "area": "大溪", "cat": "industry", "capital": "economic", "lat": 24.884, "lng": 121.289, "desc": "青年參與與木工體驗課程，連結設計與傳承，經濟與人力資本交界。", "addr": "桃園市大溪區", "hours": "課程制", "phone": "", "web": "", "access": "工作坊", "operator": "在地工坊", "season": ["全年"], "tip": "團體課請預約。", "status": "盤點中", "booking": "需預約", "tags": ["體驗", "青年"], "related": [25, 24]}, {"id": 28, "name": "李騰芳古宅", "area": "大溪", "cat": "culture", "capital": "cultural", "lat": 24.8795, "lng": 121.2905, "desc": "縣定古蹟，木博館代管，定位傳世與親子地方學。", "addr": "桃園市大溪區月眉路", "hours": "依木博館公告", "phone": "", "web": "https://wem.tycg.gov.tw/", "access": "古蹟動線限制", "operator": "木博館代管", "season": ["全年"], "tip": "適合親子教育行程。", "status": "公開", "booking": "依公告", "tags": ["古蹟", "教育"], "related": [22]}, {"id": 29, "name": "大溪橋／大漢溪河岸", "area": "大溪", "cat": "park", "capital": "natural", "lat": 24.8855, "lng": 121.283, "desc": "連接河東河西的地標與河岸開放空間，自然與建成資本節點。", "addr": "桃園市大溪區大溪橋", "hours": "全天", "phone": "", "web": "", "access": "橋面與河岸步道", "operator": "公所／水利", "season": ["全年"], "tip": "晨昏風景佳；注意交通。", "status": "公開", "booking": "否", "tags": ["河岸", "地標"], "related": [21, 31]}, {"id": 30, "name": "大溪創生館", "area": "大溪", "cat": "community", "capital": "social", "lat": 24.882, "lng": 121.287, "desc": "「未來創生於傳統」理念建築，作為地方行動者故事展演與發表場域。", "addr": "桃園市大溪區", "hours": "依館方", "phone": "", "web": "https://wem.tycg.gov.tw/", "access": "新建築可達性較佳", "operator": "木博館相關", "season": ["全年"], "tip": "關注創生展覽與講座。", "status": "公開", "booking": "活動報名", "tags": ["創生", "展演"], "related": [22, 25]}, {"id": 31, "name": "月眉人工濕地", "area": "大溪", "cat": "nature", "capital": "natural", "lat": 24.87, "lng": 121.295, "desc": "濕地生態與環境教育場域，自然資本與親子遊憩。", "addr": "桃園市大溪區月眉", "hours": "日間", "phone": "", "web": "", "access": "步道平緩路段", "operator": "公部門／管理單位", "season": ["春", "冬"], "tip": "賞鳥勿驚擾生態。", "status": "公開", "booking": "否", "tags": ["濕地", "生態"], "related": [29, 28]}, {"id": 32, "name": "慈湖／兩蔣文化園區周邊", "area": "大溪", "cat": "culture", "capital": "cultural", "lat": 24.845, "lng": 121.295, "desc": "知名觀光與歷史敘事節點，需與在地生活創生平衡思考。", "addr": "桃園市大溪區復興路一段1097號一帶", "hours": "依園區公告", "phone": "", "web": "", "access": "園區動線完善", "operator": "園區管理", "season": ["全年"], "tip": "假日壅塞；可分流老城深度遊。", "status": "公開", "booking": "依規定", "tags": ["觀光", "歷史"], "related": [21]}, {"id": 33, "name": "石門水庫風景區", "area": "大溪", "cat": "nature", "capital": "natural", "lat": 24.81, "lng": 121.245, "desc": "大尺度水庫地景與遊憩，自然資本與區域觀光門戶。", "addr": "桃園市龍潭／大溪交界一帶", "hours": "依風景區", "phone": "", "web": "", "access": "車行為主", "operator": "風景區管理", "season": ["全年"], "tip": "可結合大溪老城，避免只停水庫。", "status": "公開", "booking": "否", "tags": ["水庫", "風景"], "related": [32, 31]}, {"id": 34, "name": "大溪區公所", "area": "大溪", "cat": "public", "capital": "service", "lat": 24.88, "lng": 121.286, "desc": "地方行政與創生政策窗口。", "addr": "桃園市大溪區普濟路19號", "hours": "平日上班", "phone": "(03)388-2201", "web": "https://www.daxi.tycg.gov.tw/", "access": "公部門", "operator": "大溪區公所", "season": ["全年"], "tip": "洽地方計畫與許可。", "status": "公開", "booking": "否", "tags": ["行政"], "related": [22, 35]}, {"id": 35, "name": "大溪醫院／衛生所網絡", "area": "大溪", "cat": "medical", "capital": "service", "lat": 24.878, "lng": 121.284, "desc": "在地醫療與公共衛生服務資本。", "addr": "桃園市大溪區", "hours": "依機構", "phone": "", "web": "", "access": "醫療無障礙", "operator": "醫療／衛生單位", "season": ["全年"], "tip": "公共服務盤點用。", "status": "公開", "booking": "掛號", "tags": ["醫療"], "related": [34]}, {"id": 36, "name": "大溪國小日式宿舍（溪小宿舍）", "area": "大溪", "cat": "education", "capital": "human", "lat": 24.879, "lng": 121.2885, "desc": "修復後由木博館營運親子木育空間，人力與文化資本培力。", "addr": "桃園市大溪區", "hours": "週五至週日，預約制", "phone": "", "web": "https://wem.tycg.gov.tw/", "access": "歷史建築", "operator": "木博館", "season": ["全年"], "tip": "線上預約親子活動。", "status": "公開", "booking": "需預約", "tags": ["木育", "親子", "教育"], "related": [22, 28]}, {"id": 37, "name": "大溪農會／豆干產業節點", "area": "大溪", "cat": "industry", "capital": "economic", "lat": 24.8845, "lng": 121.2865, "desc": "豆干與農產相關經濟資本，老街伴手禮與產銷鏈結。", "addr": "桃園市大溪區", "hours": "營業依門市", "phone": "", "web": "", "access": "市區", "operator": "農會／業者", "season": ["全年"], "tip": "支持在地食品品牌。", "status": "公開", "booking": "否", "tags": ["豆干", "農產"], "related": [21, 13]}, {"id": 38, "name": "阿姆坪／溪洲親水與露營周邊", "area": "大溪", "cat": "leisure", "capital": "built", "lat": 24.82, "lng": 121.31, "desc": "大漢溪上游親水與露營休閒群集，建成與自然資本交界。", "addr": "桃園市大溪區阿姆坪", "hours": "依場域", "phone": "", "web": "", "access": "車行", "operator": "公所／業者", "season": ["春", "夏", "秋"], "tip": "確認合法與安全規定。", "status": "盤點中", "booking": "多需預約", "tags": ["親水", "露營"], "related": [33, 31]}, {"id": 39, "name": "大溪河西（南興／埔頂）社區資源", "area": "大溪", "cat": "community", "capital": "social", "lat": 24.875, "lng": 121.27, "desc": "河西區生活與社區節點，避免創生視野只集中老城。", "addr": "桃園市大溪區河西", "hours": "生活場域", "phone": "", "web": "", "access": "社區", "operator": "社區／里", "season": ["全年"], "tip": "街角館河西分區可延伸。", "status": "盤點中", "booking": "預約", "tags": ["河西", "社區"], "related": [25]}, {"id": 40, "name": "大溪老城導覽集合點（歷史館前）", "area": "大溪", "cat": "education", "capital": "human", "lat": 24.8812, "lng": 121.2865, "desc": "木博館假日導覽集合，傳遞地方知識的人力資本介面。", "addr": "桃園市大溪區普濟路23號附近", "hours": "例假日約10:30、14:30", "phone": "(03)388-8600", "web": "https://wem.tycg.gov.tw/", "access": "步行約600m路線", "operator": "木博館", "season": ["全年"], "tip": "導覽約50分鐘。", "status": "公開", "booking": "現場／依公告", "tags": ["導覽", "地方學"], "related": [22, 21]}, {"id": 41, "name": "【缺口】青年共創工寮／夜間據點", "area": "三峽", "cat": "gap", "capital": "social", "lat": 24.931, "lng": 121.365, "desc": "專家盤點：缺少穩定、可夜間活動的青年共創與留才據點，建議優先共識選址。", "addr": "三峽市區待選址", "hours": "—", "phone": "", "web": "", "access": "—", "operator": "待組成", "season": ["全年"], "tip": "工作坊討論題：誰來營運？租金？", "status": "缺口", "booking": "—", "tags": ["缺口", "青年", "夜間"], "related": [7, 12]}, {"id": 42, "name": "【缺口】社區廚房／共膳空間", "area": "大溪", "cat": "gap", "capital": "social", "lat": 24.886, "lng": 121.29, "desc": "專家盤點：食農與照顧可結合的共廚空間不足，利於短鏈與長者共餐實驗。", "addr": "大溪待選址", "hours": "—", "phone": "", "web": "", "access": "—", "operator": "待組成", "season": ["全年"], "tip": "可對接農會與社福。", "status": "缺口", "booking": "—", "tags": ["缺口", "共廚", "照顧"], "related": [37, 35]}, {"id": 43, "name": "【缺口】無障礙深度遊路線", "area": "跨區", "cat": "gap", "capital": "service", "lat": 24.91, "lng": 121.33, "desc": "老街石板與山徑對行動不便者不友善；需標註可及路段與輔具租借。", "addr": "跨區", "hours": "—", "phone": "", "web": "", "access": "待改善", "operator": "公所＋商圈", "season": ["全年"], "tip": "優先盤點平坦路段與廁所。", "status": "缺口", "booking": "—", "tags": ["缺口", "無障礙"], "related": [1, 21]}, {"id": 44, "name": "【缺口】跨區大眾運輸串聯", "area": "跨區", "cat": "gap", "capital": "built", "lat": 24.905, "lng": 121.32, "desc": "三峽—大溪大眾運輸與最後一哩不足，限制無車族群參與創生與觀光分流。", "addr": "跨區廊道", "hours": "—", "phone": "", "web": "", "access": "—", "operator": "交通單位", "season": ["全年"], "tip": "可研議假日接駁與資訊整合。", "status": "缺口", "booking": "—", "tags": ["缺口", "交通"], "related": [12, 22]}, {"id": 45, "name": "【機會】三鶯線沿線創生節點", "area": "三峽", "cat": "public", "capital": "built", "lat": 24.936, "lng": 121.375, "desc": "軌道運輸帶來可及性改變；建議預先佈局站區周邊創生、導引與商圈分流。", "addr": "三峽站周邊（依通車進度）", "hours": "—", "phone": "", "web": "", "access": "捷運系統", "operator": "交通＋地方", "season": ["全年"], "tip": "設計「出站後深度遊」而非只到老街。", "status": "機會", "booking": "—", "tags": ["交通", "機會"], "related": [1, 12]}, {"id": 46, "name": "坪林茶業博物館（延伸鏈結）", "area": "三峽", "cat": "culture", "capital": "cultural", "lat": 24.9355, "lng": 121.71, "desc": "北茶文化延伸節點（鄰近流域文化圈），可作跨區茶路敘事參考。", "addr": "新北市坪林區", "hours": "依館方", "phone": "", "web": "", "access": "館舍", "operator": "館方", "season": ["全年"], "tip": "跨區鏈結用，非核心範圍必訪。", "status": "公開", "booking": "否", "tags": ["茶", "延伸"], "related": [10]}, {"id": 47, "name": "大板根森林溫泉渡假村（山線）", "area": "三峽", "cat": "leisure", "capital": "built", "lat": 24.8605, "lng": 121.443, "desc": "山區溫泉與森林遊憩設施，休閒建成資本。", "addr": "新北市三峽區竹崙路15號", "hours": "依業者", "phone": "", "web": "", "access": "園區", "operator": "業者", "season": ["全年"], "tip": "可與滿月圓分流行程。", "status": "公開", "booking": "建議預約", "tags": ["溫泉", "森林"], "related": [9]}, {"id": 48, "name": "大溪武德殿", "area": "大溪", "cat": "culture", "capital": "cultural", "lat": 24.8815, "lng": 121.2858, "desc": "木博館體系重要歷史建築與展演空間。", "addr": "桃園市大溪區普濟路", "hours": "依展演檔期", "phone": "(03)388-8600", "web": "https://wem.tycg.gov.tw/", "access": "歷史建築", "operator": "木博館", "season": ["全年"], "tip": "查特展資訊。", "status": "公開", "booking": "依檔期", "tags": ["建築", "展演"], "related": [22, 23]}, {"id": 49, "name": "大溪歷史館", "area": "大溪", "cat": "culture", "capital": "cultural", "lat": 24.8813, "lng": 121.2866, "desc": "老城導覽起點與常設展示，地方知識入口。", "addr": "桃園市大溪區普濟路23號", "hours": "依木博館", "phone": "(03)388-8600", "web": "https://wem.tycg.gov.tw/", "access": "館舍", "operator": "木博館", "season": ["全年"], "tip": "導覽在此集合。", "status": "公開", "booking": "否", "tags": ["導覽", "文史"], "related": [40, 22]}, {"id": 50, "name": "三峽拱橋（地景節點）", "area": "三峽", "cat": "park", "capital": "built", "lat": 24.929, "lng": 121.3665, "desc": "溪流與城鎮地景節點，攝影與散步常見點。", "addr": "新北市三峽區", "hours": "全天", "phone": "", "web": "", "access": "橋面", "operator": "公所", "season": ["全年"], "tip": "可連老街與河岸。", "status": "公開", "booking": "否", "tags": ["地景", "散步"], "related": [1, 15]}, {"id": 51, "name": "藝師館（木職人故事）", "area": "大溪", "cat": "culture", "capital": "human", "lat": 24.8816, "lng": 121.286, "desc": "木職人故事收集與展示，人力與文化資本。", "addr": "桃園市大溪區日式宿舍群", "hours": "依木博館", "phone": "(03)388-8600", "web": "https://wem.tycg.gov.tw/", "access": "宿舍群", "operator": "木博館", "season": ["全年"], "tip": "認識師徒制與產業史。", "status": "公開", "booking": "否", "tags": ["職人", "展示"], "related": [22, 24]}, {"id": 52, "name": "大溪圖書館／學習資源", "area": "大溪", "cat": "education", "capital": "human", "lat": 24.8798, "lng": 121.285, "desc": "公共學習空間，人力資本基礎設施。", "addr": "桃園市大溪區", "hours": "依館方", "phone": "", "web": "", "access": "公共圖書館", "operator": "市圖系統", "season": ["全年"], "tip": "地方學資料查詢。", "status": "公開", "booking": "否", "tags": ["圖書館", "學習"], "related": [34, 40]}];
+const ITINERARIES = [{"id": "blue_dye", "name": "藍染・工藝一日", "area": "三峽", "hours": "6–8 小時", "desc": "老街→祖師廟→染工坊→藍染公園→文化協進會，串文化與經濟資本。", "ids": [1, 5, 3, 4, 11]}, {"id": "daxi_heritage", "name": "大溪生態博物館慢遊", "area": "大溪", "hours": "4–6 小時", "desc": "歷史館導覽→壹號館→木生活館→街角館→老街，體驗共學創生。", "ids": [49, 22, 23, 25, 21]}, {"id": "mountain", "name": "山線健行半日", "area": "三峽", "hours": "3–5 小時", "desc": "自然資本導向：鳶山或滿月圓／熊空，低衝擊遊憩。", "ids": [8, 9, 10, 15, 47]}, {"id": "gap_workshop", "name": "缺口工作坊路線", "area": "跨區", "hours": "半日", "desc": "走訪缺口與機會點，供共識會議現場討論。", "ids": [41, 42, 43, 44, 45]}, {"id": "revitalize", "name": "創生據點串聯", "area": "跨區", "hours": "一日", "desc": "甘樂、染工坊、木博館、創生館、街角館：社會與人力資本。", "ids": [7, 3, 22, 30, 25, 12]}];
+const EXPERTS = [{"role": "地方創生／社區營造", "focus": "ABCD 資產本位、資本與缺口、利害關係人", "icon": "fa-seedling"}, {"role": "GIS／空間資訊", "focus": "底圖、群集、GeoJSON／CSV、空間敘事", "icon": "fa-map"}, {"role": "UX／服務設計", "focus": "分頁、篩選、行動版、列印", "icon": "fa-mobile-screen"}, {"role": "文化資產／文史", "focus": "敘事路線、季節、營運資訊", "icon": "fa-book-open"}, {"role": "產業／觀光行銷", "focus": "行程產品、導航、在地消費", "icon": "fa-route"}, {"role": "資料架構", "focus": "電話／工時／預約／營運者欄位標準", "icon": "fa-database"}, {"role": "生態／環境", "focus": "自然資本與低衝擊提示", "icon": "fa-paw"}, {"role": "公共參與／包容", "focus": "補點、缺口透明、無障礙", "icon": "fa-comments"}];
+
+const state = {
+  q:'', areas:new Set(['三峽','大溪','跨區']),
+  cats:new Set(Object.keys(CATEGORIES)),
+  capital:null, showGaps:true, status:new Set(['公開','盤點中','缺口','機會']),
+  routeLine:null
+};
+
+const map = L.map('map',{zoomControl:false}).setView([24.90,121.33],11);
+L.control.zoom({position:'bottomright'}).addTo(map);
+const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Esri'});
+const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'});
+const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'© OpenTopoMap'});
+const labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,opacity:.85});
+sat.addTo(map); labels.addTo(map);
+let activeBase='sat';
+const cluster = L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:46,disableClusteringAtZoom:16});
+map.addLayer(cluster);
+const markersById = new Map();
+
+function pinIcon(p){
+  const c = CATEGORIES[p.cat]||{color:'#666',icon:'fa-location-dot'};
+  const gap = p.cat==='gap' || p.status==='缺口' || p.status==='機會';
+  return L.divIcon({className:'',iconSize:[32,32],iconAnchor:[16,32],popupAnchor:[0,-26],
+    html:`<div class="pin${gap?' gap':''}" style="background:${c.color}"><i class="fa-solid ${c.icon}"></i></div>`});
+}
+
+function filtered(){
+  const q=state.q.trim().toLowerCase();
+  return PLACES.filter(p=>{
+    if(p.cat==='gap' && !state.showGaps) return false;
+    if(!state.areas.has(p.area) && !(p.area==='跨區' && (state.areas.has('三峽')||state.areas.has('大溪')||state.areas.has('跨區')))) {
+      if(p.area==='跨區'){ if(!state.areas.has('跨區') && !state.areas.has('三峽') && !state.areas.has('大溪')) return false; }
+      else return false;
+    }
+    if(p.area==='跨區' && !state.areas.has('跨區') && state.areas.size && !state.areas.has('三峽') && !state.areas.has('大溪')) return false;
+    // simplify area: show 跨區 if any area selected
+    if(p.area==='跨區'){
+      if(!state.areas.has('跨區') && !state.areas.has('三峽') && !state.areas.has('大溪')) return false;
+    } else if(!state.areas.has(p.area)) return false;
+    if(!state.cats.has(p.cat)) return false;
+    if(state.capital && p.capital!==state.capital) return false;
+    if(p.status && !state.status.has(p.status)) return false;
+    if(!q) return true;
+    const blob = [p.name,p.desc,p.addr,p.area,p.operator,(p.tags||[]).join(' '),(p.tip||'')].join(' ').toLowerCase();
+    return blob.includes(q);
+  });
+}
+
+function popupHtml(p){
+  const cat=CATEGORIES[p.cat]||{name:p.cat,color:'#666'};
+  const cap=CAPITALS[p.capital]||{name:p.capital};
+  const tags=[p.area,cat.name,cap.name,p.status,...(p.season||[]),...(p.tags||[]).slice(0,3)]
+    .map(t=>`<span>${t}</span>`).join('');
+  const rel=(p.related||[]).map(id=>{
+    const x=PLACES.find(z=>z.id===id); return x?`<a href="#" data-rel="${id}">${x.name}</a>`:'';
+  }).filter(Boolean).join(' · ');
+  return `<div class="popup">
+    <h3>${p.name}</h3>
+    <div class="tags">${tags}</div>
+    <p>${p.desc}</p>
+    <div class="tip"><i class="fa-solid fa-circle-info"></i> ${p.tip||''}</div>
+    <div class="kv"><i class="fa-regular fa-clock"></i> ${p.hours||'—'}</div>
+    <div class="kv"><i class="fa-solid fa-phone"></i> ${p.phone||'—'} ${p.booking? '· 預約：'+p.booking:''}</div>
+    <div class="kv"><i class="fa-solid fa-wheelchair"></i> ${p.access||'—'}</div>
+    <div class="kv"><i class="fa-solid fa-user-tie"></i> ${p.operator||'—'}</div>
+    <div class="kv"><i class="fa-solid fa-location-dot"></i> ${p.addr||''}</div>
+    ${rel?`<div class="kv">相關：${rel}</div>`:''}
+    <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap">
+      <a target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}">導航</a>
+      ${p.web?`<a target="_blank" rel="noopener" href="${p.web}">官方連結</a>`:''}
+    </div>
+  </div>`;
+}
+
+function renderMarkers(){
+  cluster.clearLayers(); markersById.clear();
+  const list=filtered();
+  list.forEach(p=>{
+    const m=L.marker([p.lat,p.lng],{icon:pinIcon(p),title:p.name});
+    m.bindPopup(popupHtml(p),{maxWidth:300});
+    m.on('popupopen', e=>{
+      e.popup.getElement().querySelectorAll('[data-rel]').forEach(a=>{
+        a.onclick=ev=>{ev.preventDefault(); focusPlace(+a.dataset.rel);};
+      });
+    });
+    m.on('click',()=>highlightCard(p.id));
+    cluster.addLayer(m); markersById.set(p.id,m);
+  });
+  document.getElementById('stat-n').textContent=list.length;
+  document.getElementById('stat-g').textContent=list.filter(p=>p.cat==='gap'||p.status==='缺口'||p.status==='機會').length;
+  document.getElementById('stat-a').textContent=new Set(list.map(p=>p.area)).size;
+  renderList(list); renderCaps(); renderGapList();
+}
+
+function renderList(list){
+  const el=document.getElementById('list-panel');
+  if(!list.length){el.innerHTML='<p style="font-size:12px;color:#6b6255;padding:10px">沒有符合條件的資源。</p>';return;}
+  el.innerHTML=list.map(p=>{
+    const cat=CATEGORIES[p.cat]; const cap=CAPITALS[p.capital];
+    return `<article class="card" data-id="${p.id}" tabindex="0">
+      <h3>${p.name}</h3>
+      <div class="meta"><span>${p.area}</span><span>${cat?cat.name:p.cat}</span><span>${cap?cap.name:''}</span><span>${p.status||''}</span></div>
+      <p>${p.desc}</p></article>`;
+  }).join('');
+  el.querySelectorAll('.card').forEach(card=>{
+    const go=()=>focusPlace(+card.dataset.id);
+    card.onclick=go; card.onkeydown=e=>{if(e.key==='Enter')go();};
+  });
+}
+
+function renderGapList(){
+  const gaps=PLACES.filter(p=>p.cat==='gap'||p.status==='缺口'||p.status==='機會');
+  document.getElementById('gap-list').innerHTML=gaps.map(p=>`
+    <article class="card" data-id="${p.id}"><h3>${p.name}</h3>
+    <div class="meta"><span>${p.status}</span><span>${p.area}</span></div>
+    <p>${p.desc}</p></article>`).join('');
+  document.getElementById('gap-list').querySelectorAll('.card').forEach(c=>{
+    c.onclick=()=>{state.showGaps=true;state.cats.add('gap');renderFilters();renderMarkers();focusPlace(+c.dataset.id);};
+  });
+  document.getElementById('gap-toggle').innerHTML=
+    `<button type="button" class="chip ${state.showGaps?'on':''}" id="chip-gaps">${state.showGaps?'顯示中':'已隱藏'}：缺口／機會圖層</button>`;
+  document.getElementById('chip-gaps').onclick=()=>{state.showGaps=!state.showGaps; if(state.showGaps) state.cats.add('gap'); renderFilters(); renderMarkers(); renderGapList();};
+}
+
+function highlightCard(id){
+  document.querySelectorAll('.card').forEach(c=>c.style.outline='');
+  const card=document.querySelector(`.card[data-id="${id}"]`);
+  if(card){card.style.outline='2px solid #c45c26'; card.scrollIntoView({block:'nearest',behavior:'smooth'});}
+}
+function focusPlace(id){
+  const p=PLACES.find(x=>x.id===id); const m=markersById.get(id);
+  if(!p) return;
+  if(p.cat==='gap'){state.showGaps=true; state.cats.add('gap');}
+  state.areas.add(p.area==='跨區'?'跨區':p.area);
+  state.cats.add(p.cat);
+  renderFilters(); renderMarkers();
+  setTimeout(()=>{
+    map.setView([p.lat,p.lng],Math.max(map.getZoom(),14),{animate:true});
+    const m2=markersById.get(id); if(m2) m2.openPopup();
+    highlightCard(id);
+  },50);
+}
+function fitVisible(){
+  const list=filtered(); if(!list.length) return;
+  map.fitBounds(L.latLngBounds(list.map(p=>[p.lat,p.lng])).pad(0.1));
+}
+
+function renderFilters(){
+  const areas=['三峽','大溪','跨區'];
+  document.getElementById('area-filters').innerHTML=areas.map(a=>
+    `<button type="button" class="chip ${state.areas.has(a)?'on':''}" data-area="${a}">${a}</button>`).join('');
+  document.querySelectorAll('#area-filters .chip').forEach(btn=>btn.onclick=()=>{
+    const a=btn.dataset.area;
+    if(state.areas.has(a)) state.areas.delete(a); else state.areas.add(a);
+    if(!state.areas.size) state.areas.add(a);
+    renderFilters(); renderMarkers();
+  });
+  document.getElementById('cat-filters').innerHTML=Object.entries(CATEGORIES).map(([k,v])=>
+    `<button type="button" class="chip ${state.cats.has(k)?'on':''}" data-cat="${k}"><i class="dot" style="background:${v.color}"></i>${v.name}</button>`).join('');
+  document.querySelectorAll('#cat-filters .chip').forEach(btn=>btn.onclick=()=>{
+    const c=btn.dataset.cat;
+    if(state.cats.has(c)) state.cats.delete(c); else state.cats.add(c);
+    if(!state.cats.size) state.cats.add(c);
+    renderFilters(); renderMarkers();
+  });
+  const sts=['公開','盤點中','缺口','機會'];
+  document.getElementById('status-filters').innerHTML=sts.map(s=>
+    `<button type="button" class="chip ${state.status.has(s)?'on':''}" data-st="${s}">${s}</button>`).join('');
+  document.querySelectorAll('#status-filters .chip').forEach(btn=>btn.onclick=()=>{
+    const s=btn.dataset.st;
+    if(state.status.has(s)) state.status.delete(s); else state.status.add(s);
+    if(!state.status.size) state.status.add(s);
+    renderFilters(); renderMarkers();
+  });
+}
+
+function renderCaps(){
+  const counts={}; PLACES.forEach(p=>{counts[p.capital]=(counts[p.capital]||0)+1;});
+  document.getElementById('cap-grid').innerHTML=Object.entries(CAPITALS).map(([k,v])=>`
+    <div class="cap-card ${state.capital===k?'on':''}" data-cap="${k}">
+      <div class="top"><i class="fa-solid ${v.icon}" style="background:${v.color}"></i>${v.name}<span class="cnt">${counts[k]||0}</span></div>
+      <p>${v.tip}</p></div>`).join('');
+  document.querySelectorAll('.cap-card').forEach(el=>el.onclick=()=>{
+    state.capital=state.capital===el.dataset.cap?null:el.dataset.cap; renderMarkers();
+  });
+}
+function renderItins(){
+  document.getElementById('itin-list').innerHTML=ITINERARIES.map(it=>`
+    <div class="itin"><div class="tag">${it.area} · ${it.hours} · ${it.ids.length} 站</div>
+    <h3>${it.name}</h3><p>${it.desc}</p>
+    <button type="button" data-itin="${it.id}">在地圖顯示路線</button></div>`).join('');
+  document.querySelectorAll('[data-itin]').forEach(b=>b.onclick=()=>showItinerary(b.dataset.itin));
+}
+function showItinerary(id){
+  const it=ITINERARIES.find(x=>x.id===id); if(!it||!it.ids.length) return;
+  const pts=it.ids.map(i=>PLACES.find(p=>p.id===i)).filter(Boolean);
+  pts.forEach(p=>{state.areas.add(p.area); state.cats.add(p.cat); if(p.cat==='gap') state.showGaps=true;});
+  state.capital=null; renderFilters(); renderMarkers(); clearRoute();
+  const ll=pts.map(p=>[p.lat,p.lng]);
+  state.routeLine=L.polyline(ll,{color:'#c45c26',weight:4,opacity:.85,dashArray:'8 10'}).addTo(map);
+  map.fitBounds(L.latLngBounds(ll).pad(.15));
+  setTimeout(()=>{const m=markersById.get(pts[0].id); if(m) m.openPopup();},300);
+}
+function clearRoute(){ if(state.routeLine){map.removeLayer(state.routeLine); state.routeLine=null;} }
+function renderExperts(){
+  document.getElementById('expert-list').innerHTML=EXPERTS.map(e=>`
+    <div class="expert"><i class="fa-solid ${e.icon}"></i><div><b>${e.role}</b><span>${e.focus}</span></div></div>`).join('');
+}
+function renderLegend(){
+  document.getElementById('legend').innerHTML='<h4>圖例</h4>'+Object.values(CATEGORIES).map(c=>
+    `<div class="legend-row"><i style="background:${c.color}"></i>${c.name}</div>`).join('');
+}
+
+function exportGeoJSON(){
+  const list=filtered();
+  const gj={type:'FeatureCollection',features:list.map(p=>({
+    type:'Feature', geometry:{type:'Point',coordinates:[p.lng,p.lat]},
+    properties:Object.fromEntries(Object.entries(p).filter(([k])=>k!=='lat'&&k!=='lng'))
+  }))};
+  download(JSON.stringify(gj,null,2),'sanxia-daxi-filtered.geojson','application/geo+json');
+}
+function exportCSV(){
+  const list=filtered();
+  const cols=['id','name','area','cat','capital','lat','lng','status','hours','phone','addr','operator','booking','access','tip'];
+  const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+  const lines=[cols.join(',')].concat(list.map(p=>cols.map(c=>esc(Array.isArray(p[c])?p[c].join('|'):p[c])).join(',')));
+  download('\uFEFF'+lines.join('\n'),'sanxia-daxi-filtered.csv','text/csv;charset=utf-8');
+}
+function download(text,name,type){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click();
+}
+
+function loadSug(){try{return JSON.parse(localStorage.getItem('sd_map_v3_sug')||'[]');}catch(e){return[];}}
+function saveSug(t){const a=loadSug(); a.unshift({t,at:new Date().toISOString()}); localStorage.setItem('sd_map_v3_sug',JSON.stringify(a.slice(0,40))); renderSug();}
+function renderSug(){
+  const a=loadSug();
+  document.getElementById('suggest-list').innerHTML=a.length
+    ? '<b style="font-size:12px">本機建議</b><ul style="padding-left:16px;margin-top:4px">'+a.map(x=>`<li style="margin:3px 0">${x.t} <span style="color:#999;font-size:10px">${x.at.slice(0,10)}</span></li>`).join('')+'</ul>'
+    : '<span style="color:#8a7d6b">尚無建議</span>';
+}
+
+document.querySelectorAll('.tab').forEach(tab=>tab.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  tab.classList.add('active'); document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+});
+document.getElementById('q').oninput=e=>{state.q=e.target.value; renderMarkers();};
+function setBase(name){
+  [sat,osm,topo,labels].forEach(l=>map.removeLayer(l));
+  if(name==='sat'){sat.addTo(map); labels.addTo(map);}
+  else if(name==='osm') osm.addTo(map);
+  else topo.addTo(map);
+  activeBase=name;
+  ['sat','osm','topo'].forEach(n=>document.getElementById('basemap-'+n).classList.toggle('active',n===name));
+}
+document.getElementById('basemap-sat').onclick=()=>setBase('sat');
+document.getElementById('basemap-osm').onclick=()=>setBase('osm');
+document.getElementById('basemap-topo').onclick=()=>setBase('topo');
+document.getElementById('btn-export-gj').onclick=exportGeoJSON;
+document.getElementById('btn-export-csv').onclick=exportCSV;
+document.getElementById('btn-fit').onclick=fitVisible;
+document.getElementById('btn-clear-route').onclick=clearRoute;
+document.getElementById('btn-print').onclick=()=>window.print();
+document.getElementById('btn-method').onclick=()=>document.getElementById('modal').classList.add('show');
+document.getElementById('btn-tour').onclick=()=>document.getElementById('modal').classList.add('show');
+document.getElementById('modal-close').onclick=()=>document.getElementById('modal').classList.remove('show');
+document.getElementById('modal').onclick=e=>{if(e.target.id==='modal') e.currentTarget.classList.remove('show');};
+document.getElementById('btn-suggest').onclick=()=>{
+  const t=document.getElementById('suggest-text').value.trim(); if(!t) return;
+  saveSug(t); document.getElementById('suggest-text').value='';
+};
+document.getElementById('btn-toggle-side').onclick=()=>document.getElementById('sidebar').classList.toggle('open');
+document.getElementById('btn-mobile-fit').onclick=fitVisible;
+
+renderFilters(); renderItins(); renderExperts(); renderLegend(); renderMarkers(); renderSug();
+setTimeout(fitVisible,300);
+</script>
+</div>
+</body>
+</html>
